@@ -5,9 +5,14 @@ const buffer_manager = @import("buffer_manager");
 
 pub fn main(_: std.process.Init) !void {
     var my_manager = buffer_manager.BufferManager{};
-    _ = try buffer_manager.AllocPageFrame(&my_manager);
-    const result = buffer_manager.AllocPageFrame(&my_manager);
-    std.debug.print("{any}", .{result});
+    my_manager.init();
+    const result = try buffer_manager.AllocPageFrame(&my_manager);
+
+    std.debug.print("created pfn: {any}", .{result.pfn});
+
+    const query_results = try buffer_manager.PFNToPage(result.pfn, &my_manager);
+
+    std.debug.print("queried page {any}", .{query_results});
 }
 
 // test "simple test" {

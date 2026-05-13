@@ -2,7 +2,7 @@
 const std = @import("std");
 const Io = std.Io;
 
-pub const BufferManagerError = error{PageTableSizeExceeded};
+pub const BufferManagerError = error{ PageTableSizeExceeded, PageNotFound };
 // /// This is a documentation comment to explain the `printAnotherMessage` function below.
 // ///
 // /// Accepting an `Io.Writer` instance is a handy way to write reusable code.
@@ -35,7 +35,9 @@ fn FreePageFrame(pfn: u64, bfr_mngr: *BufferManager) !void {
 }
 // // Get the page of a pfn either from memory or disk. Incremenst the pin count by
 // // one. The pin count is needed to not evict pages that are currently in use
-// fn PFNToPage(pfn: u64, bfr_mngr: *BufferManager) !*Page {}
+pub fn PFNToPage(pfn: u64, bfr_mngr: *BufferManager) !*Page {
+    return try bfr_mngr.pfnToPage(pfn);
+}
 // // // Marks the page as dirty (e.g. by setting its dirty bit)
 // fn MarkDirty(pfn: u64, bfr_mngr: *BufferManager) void {}
 // // // Flush a dirty page to disk and clear its dirty bit
@@ -49,9 +51,15 @@ fn FreePageFrame(pfn: u64, bfr_mngr: *BufferManager) !void {
 pub const BufferManager = struct {
     const maxBufferSize = 4;
 
-    var page_table: [maxBufferSize]PageMetadata = [_]PageMetadata{0};
+    var page_table: [maxBufferSize]PageMetadata = undefined;
     var page_table_index: u64 = 0;
     var next_pfn: u64 = 0;
+
+    pub fn init(_: *BufferManager) void {
+        for (page_table, 0..) |_, index| {
+            page_table[index].pfn = 0;
+        }
+    }
 
     pub fn allocPageFrame(_: *BufferManager) !PageMetadata {
         if (page_table_index >= maxBufferSize) {
@@ -67,9 +75,14 @@ pub const BufferManager = struct {
         return new_page_metadata;
     }
 
-    // pub fn PFNToPage(pfn: u64, bfr_mngr: *BufferManager){
-
-    // }
+    pub fn pfnToPage(_: *BufferManager, pfn: u64) !*Page {
+        for (page_table) |entry| {
+            if (entry.pfn == pfn) {
+                return entry.page;
+            }
+        }
+        return BufferManagerError.PageNotFound;
+    }
 
     // pub fn freePageFrame(_: *BufferManager, pfn: u64) !PageMetadata {
     //     const page = try std.heap.page_allocator.alloc(Page, 1);
