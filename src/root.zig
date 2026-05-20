@@ -36,39 +36,50 @@ pub fn PFNToPage(pfn: u64, bfr_mngr: *BufferManager) !*Page {
 // fn PFNToPageAsync(pfn: u64, bfr_mngr: *BufferManager) !?*Page {}
 
 pub const BufferManager = struct {
-    const maxBufferSize = 4;
-    var page_table: [maxBufferSize]PageMetadata = undefined;
-    var next_pfn: u64 = 0;
+    pub const maxBufferSize = 4;
+    page_table: [maxBufferSize]PageMetadata = undefined,
+    next_pfn: u64 = 0,
 
-    fn freeIndex() !usize {
-        for (page_table, 0..) |_, index| {
-            if (page_table[index].pfn == 0) {
+    fn freeIndex(self: *BufferManager) !usize {
+        for (self.page_table, 0..) |_, index| {
+            if (self.page_table[index].pfn == 0) {
                 return index;
             }
         }
         return BufferManagerError.PageTableSizeExceeded;
     }
 
-    pub fn init(_: *BufferManager) void {
-        for (page_table, 0..) |_, index| {
-            page_table[index].pfn = 0;
+    pub fn init(self: *BufferManager) void {
+        self.next_pfn = 0;
+        for (self.page_table, 0..) |_, index| {
+            self.page_table[index].pfn = 0;
         }
     }
 
-    pub fn allocPageFrame(_: *BufferManager) !PageMetadata {
-        const page_table_index = try freeIndex();
+    pub fn allocPageFrame(self: *BufferManager) !PageMetadata {
+        // Get the next free entry position in our page table
+        const page_table_index = try self.freeIndex();
+
+        // Allocate a new page
         const page = try std.heap.page_allocator.alloc(Page, 1);
-        next_pfn += 1;
+
+        // Increase the page frame number by one
+        // This functions as an id to reference pages
+        self.next_pfn += 1;
+
         // cast a many item pointer to a normal pointer
         const page_ptr: *Page = @ptrCast(page.ptr);
-        const new_page_metadata = PageMetadata{ .page = page_ptr, .pfn = next_pfn };
-        page_table[page_table_index] = new_page_metadata;
+        const new_page_metadata = PageMetadata{
+            .pfn = self.next_pfn,
+            .page = page_ptr,
+        };
+        self.page_table[page_table_index] = new_page_metadata;
         return new_page_metadata;
     }
 
     // remove pub once testing is done
-    pub fn pfnToPage(_: *BufferManager, pfn: u64) !*Page {
-        for (page_table) |entry| {
+    pub fn pfnToPage(self: *BufferManager, pfn: u64) !*Page {
+        for (self.page_table) |entry| {
             if (entry.pfn == pfn) {
                 return entry.page;
             }

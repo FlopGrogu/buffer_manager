@@ -21,3 +21,19 @@ pub fn main(_: std.process.Init) !void {
     // try expect(err == FileOpenError.OutOfMemory);
     //try buffer_manager.PFNToPage(result.pfn, &my_manager);
 }
+
+test "alloc page frame" {
+    var mgr = buffer_manager.BufferManager{};
+    mgr.init();
+
+    // Make sure that the pfn is always increasing by 1
+    for (0..buffer_manager.BufferManager.maxBufferSize) |index| {
+        const result = try buffer_manager.AllocPageFrame(&mgr);
+        try std.testing.expect(result.pfn == index + 1);
+    }
+
+    // Check that PageTableSizeExceeded error is thrown if page table is out of space
+    _ = buffer_manager.AllocPageFrame(&mgr) catch |err| {
+        try std.testing.expect(err == buffer_manager.BufferManagerError.PageTableSizeExceeded);
+    };
+}
