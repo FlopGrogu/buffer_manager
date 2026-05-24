@@ -79,9 +79,9 @@ pub const BufferManager = struct {
 
     // remove pub once testing is done
     pub fn pfnToPage(self: *BufferManager, pfn: u64) !*Page {
-        for (self.page_table) |entry| {
-            if (entry.pfn == pfn) {
-                return entry.page;
+        for (self.page_table) |frame| {
+            if (frame.pfn == pfn) {
+                return frame.page;
             }
         }
         return BufferManagerError.PageNotFound;
